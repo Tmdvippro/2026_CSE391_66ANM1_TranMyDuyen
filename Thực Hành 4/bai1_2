@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Sinh Viên</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        input,
+        select,
+        button {
+            padding: 6px;
+            margin-right: 8px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 700px;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #eee;
+            cursor: pointer;
+        }
+
+        .bad-score {
+            background: yellow;
+        }
+
+        .summary {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 15px;
+            font-style: italic;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <h2>Quản Lý Điểm Sinh Viên</h2>
+
+    <input id="studentName" placeholder="Họ tên">
+    <input id="studentScore" type="number" placeholder="Điểm (0-10)">
+    <button id="btnAdd">Thêm</button>
+
+    <br><br>
+
+    <input id="searchBox" placeholder="Tìm kiếm sinh viên">
+
+    <select id="rankFilter">
+        <option value="all">Tất cả</option>
+        <option value="Giỏi">Giỏi</option>
+        <option value="Khá">Khá</option>
+        <option value="Trung bình">Trung bình</option>
+        <option value="Yếu">Yếu</option>
+    </select>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Họ tên</th>
+                <th id="scoreSort">Điểm</th>
+                <th>Xếp loại</th>
+                <th>Xóa</th>
+            </tr>
+        </thead>
+
+        <tbody id="studentTable"></tbody>
+
+    </table>
+
+    <div id="summaryBox" class="summary"></div>
+
+    <script>
+
+        let dataStudents = []
+        let showStudents = []
+        let sortType = null
+
+        const nameInput = document.getElementById("studentName")
+        const scoreInput = document.getElementById("studentScore")
+
+        const table = document.getElementById("studentTable")
+        const searchBox = document.getElementById("searchBox")
+        const rankFilter = document.getElementById("rankFilter")
+
+        const scoreSort = document.getElementById("scoreSort")
+        const summaryBox = document.getElementById("summaryBox")
+
+        function getRank(score) {
+
+            if (score >= 8.5) return "Giỏi"
+            if (score >= 7) return "Khá"
+            if (score >= 5) return "Trung bình"
+
+            return "Yếu"
+
+        }
+
+        function addStudent() {
+
+            let name = nameInput.value.trim()
+            let score = parseFloat(scoreInput.value)
+
+            if (name === "") {
+                alert("Họ tên không được để trống")
+                return
+            }
+
+            if (isNaN(score) || score < 0 || score > 10) {
+                alert("Điểm phải từ 0 đến 10")
+                return
+            }
+
+            dataStudents.push({
+                name: name,
+                score: score
+            })
+
+            nameInput.value = ""
+            scoreInput.value = ""
+            nameInput.focus()
+
+            applyFilter()
+
+        }
+
+        function applyFilter() {
+
+            let keyword = searchBox.value.toLowerCase()
+            let rankValue = rankFilter.value
+
+            showStudents = dataStudents.filter(sv => {
+
+                let matchName = sv.name.toLowerCase().includes(keyword)
+
+                let rank = getRank(sv.score)
+
+                let matchRank = rankValue === "all" || rank === rankValue
+
+                return matchName && matchRank
+
+            })
+
+            if (sortType) {
+
+                showStudents.sort((a, b) => {
+
+                    return sortType === "asc"
+                        ? a.score - b.score
+                        : b.score - a.score
+
+                })
+
+            }
+
+            renderTable()
+
+        }
+
+        function renderTable() {
+
+            table.innerHTML = ""
+
+            if (showStudents.length === 0) {
+
+                table.innerHTML = `
+<tr>
+<td colspan="5" class="empty">
+Không có kết quả
+</td>
+</tr>
+`
+
+                summaryBox.textContent =
+                    "Tổng sinh viên: 0 | Điểm trung bình: 0"
+
+                return
+
+            }
+
+            showStudents.forEach((sv, index) => {
+
+                let tr = document.createElement("tr")
+
+                if (sv.score < 5) {
+                    tr.classList.add("bad-score")
+                }
+
+                let originalIndex = dataStudents.indexOf(sv)
+
+                tr.innerHTML = `
+
+<td>${index + 1}</td>
+<td>${sv.name}</td>
+<td>${sv.score}</td>
+<td>${getRank(sv.score)}</td>
+
+<td>
+<button data-id="${originalIndex}" class="btnDelete">
+Xóa
+</button>
+</td>
+
+`
+
+                table.appendChild(tr)
+
+            })
+
+            updateSummary()
+
+        }
+
+        function updateSummary() {
+
+            let total = showStudents.length
+
+            let sum = showStudents.reduce((s, sv) => s + sv.score, 0)
+
+            let avg = total ? (sum / total).toFixed(2) : 0
+
+            summaryBox.textContent =
+                `Tổng sinh viên: ${total} | Điểm trung bình: ${avg}`
+
+        }
+
+        scoreSort.addEventListener("click", () => {
+
+            sortType = sortType === "asc" ? "desc" : "asc"
+
+            scoreSort.textContent =
+                "Điểm " + (sortType === "asc" ? "▲" : "▼")
+
+            applyFilter()
+
+        })
+
+        searchBox.addEventListener("input", applyFilter)
+
+        rankFilter.addEventListener("change", applyFilter)
+
+        document.getElementById("btnAdd")
+            .addEventListener("click", addStudent)
+
+        scoreInput.addEventListener("keypress", e => {
+            if (e.key === "Enter") {
+                addStudent()
+            }
+        })
+
+        table.addEventListener("click", e => {
+
+            if (e.target.classList.contains("btnDelete")) {
+
+                let id = e.target.dataset.id
+
+                dataStudents.splice(id, 1)
+
+                applyFilter()
+
+            }
+
+        })
+
+        applyFilter()
+
+    </script>
+
+</body>
+
+</html>
